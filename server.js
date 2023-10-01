@@ -2,10 +2,11 @@
 // It handles adding admin roles to users and deleting users from Firebase Authentication.
 
 const express = require('express');
-const cors = require('cors'); // Import the cors package for handling cross-origin requests
+const cors = require('cors');
 const app = express();
-const admin = require('firebase-admin'); // Import Firebase Admin SDK
-const serviceAccount = require('./achieveitAdminSDK.json'); // Replace with your service account JSON file
+const admin = require('firebase-admin');
+const serviceAccount = require('./achieveitAdminSDK.json');
+const nodemailer = require('nodemailer');
 
 // Initialize the Firebase Admin SDK with the service account credentials
 admin.initializeApp({
@@ -19,11 +20,19 @@ app.use(cors({
 
 app.use(express.json());
 
-// Endpoint to execute a script that adds an admin role to a user based on their email
+const transporter = nodemailer.createTransport({
+  service: 'smtp.mail.yahoo.com',
+  port: 465, // Port SMTP de Yahoo
+  secure: true,
+  auth: {
+    user: 'achieveit1@myyahoo.com',
+    pass: 'TeamGoals2023',
+  },
+});
+
 app.post('/execute-script', async (req, res) => {
   try {
     const { email } = req.body;
-
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
     }
@@ -68,6 +77,37 @@ app.post('/delete-user', async (req, res) => {
   } catch (error) {
     console.error('Error deleting user:', error);
     res.status(500).json({ error: 'An error occurred while deleting the user' });
+  }
+});
+
+// Nouvel endpoint pour envoyer un e-mail
+app.post('/send-email', async (req, res) => {
+  try {
+    const { to, subject, text } = req.body;
+
+    if (!to || !subject || !text) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    const mailOptions = {
+      from: 'achieveit1@myyahoo.com',
+      to: to,
+      subject: subject,
+      text: text,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error('Erreur lors de l\'envoi de l\'e-mail :', error);
+        res.status(500).json({ error: 'An error occurred while sending the email' });
+      } else {
+        console.log('E-mail envoyé :', info.response);
+        res.status(200).json({ message: 'Email sent successfully' });
+      }
+    });
+  } catch (error) {
+    console.error('Error sending email:', error);
+    res.status(500).json({ error: 'An error occurred while sending the email' });
   }
 });
 
